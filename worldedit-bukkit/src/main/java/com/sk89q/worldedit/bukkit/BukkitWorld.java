@@ -410,9 +410,12 @@ public class BukkitWorld extends AbstractWorld {
         int X = pt.x() >> 4;
         int Z = pt.z() >> 4;
         //FAWE-Folia start - isMainThread means nothing on a regionised server, and a synchronous getChunkAt from
-        // the wrong region is exactly what it forbids; the asynchronous load is always correct there
+        // the wrong region is exactly what it forbids; the asynchronous load is always correct there.
+        // PaperLib is no help: it picks its implementation from a version string it cannot parse here, and the one
+        // it settles on calls the synchronous getChunkAt, which throws off the owning region. The Bukkit method it
+        // would have called on Paper schedules the load itself and is safe from any thread, so call it directly.
         if (FaweScheduler.isFolia()) {
-            PaperLib.getChunkAtAsync(world, X, Z, true);
+            world.getChunkAtAsync(X, Z, true);
         } else if (Fawe.isMainThread()) {
             //FAWE-Folia end
             world.getChunkAt(X, Z);
