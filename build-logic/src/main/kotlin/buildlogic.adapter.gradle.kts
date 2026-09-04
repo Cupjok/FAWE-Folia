@@ -28,24 +28,18 @@ repositories {
     maven {
         name = "PaperMC"
         url = uri("https://repo.papermc.io/repository/maven-public/")
-        content {
-            // excludeModule("io.papermc.paper", "dev-bundle")
-        }
     }
     maven {
         name = "EngineHub Repository"
         url = uri("https://maven.enginehub.org/repo/")
         content {
-            // excludeModule("io.papermc.paper", "dev-bundle")
+            excludeModule("net.fabricmc", "yarn")
         }
     }
-/*    maven {
+    maven {
         name = "IntellectualSites"
-        url = uri("https://repo.intellectualsites.dev/repository/paper-dev-bundles/")
-        content {
-            // includeModule("io.papermc.paper", "dev-bundle")
-        }
-    }*/
+        url = uri("https://repo.intellectualsites.dev/repository/maven-all/")
+    }
     mavenCentral()
     // FAWE-Folia: paperweight adds its own FabricMC repository for the newer dev bundles, but not for
     // adapter-1_21's pinned one, so its yarn param mappings resolve against EngineHub's mirror alone -
