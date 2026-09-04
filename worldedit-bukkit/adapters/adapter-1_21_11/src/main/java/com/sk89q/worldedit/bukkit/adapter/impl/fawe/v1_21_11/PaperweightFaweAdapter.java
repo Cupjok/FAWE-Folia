@@ -10,6 +10,8 @@ import com.fastasyncworldedit.core.nbt.FaweCompoundTag;
 import com.fastasyncworldedit.core.queue.IBatchProcessor;
 import com.fastasyncworldedit.core.queue.IChunkGet;
 import com.fastasyncworldedit.core.queue.implementation.packet.ChunkPacket;
+import com.github.ssquadteam.fawe.compat.RegionisedCapture;
+import com.github.ssquadteam.fawe.scheduler.FaweScheduler;
 import com.github.ssquadteam.fawe.scheduler.RegionSync;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -545,17 +547,29 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
 
     @Override
     protected void preCaptureStates(final ServerLevel serverLevel) {
+        //FAWE-Folia start - a regionised server keeps the capture state on the region, not the world
+        if (FaweScheduler.isFolia()) {
+            RegionisedCapture.preCapture(serverLevel);
+            return;
+        }
+        //FAWE-Folia end
         serverLevel.captureTreeGeneration = true;
         serverLevel.captureBlockStates = true;
     }
 
     @Override
     protected List<org.bukkit.block.BlockState> getCapturedBlockStatesCopy(final ServerLevel serverLevel) {
-        return new ArrayList<>(serverLevel.capturedBlockStates.values());
+        return new ArrayList<>(capturedBlockStates(serverLevel));
     }
 
     @Override
     protected void postCaptureBlockStates(final ServerLevel serverLevel) {
+        //FAWE-Folia start - a regionised server keeps the capture state on the region, not the world
+        if (FaweScheduler.isFolia()) {
+            RegionisedCapture.postCapture(serverLevel);
+            return;
+        }
+        //FAWE-Folia end
         serverLevel.captureBlockStates = false;
         serverLevel.captureTreeGeneration = false;
         serverLevel.capturedBlockStates.clear();
@@ -584,7 +598,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                     return null;
                 }
                 List<CraftBlockState> placedBlocks = new ArrayList<>(populator.getSnapshotBlocks());
-                placedBlocks.addAll(serverLevel.capturedBlockStates.values());
+                placedBlocks.addAll(capturedBlockStates(serverLevel));
                 return placedBlocks;
             } finally {
                 postCaptureBlockStates(serverLevel);
@@ -653,7 +667,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                             ), chunkPosx
                     ));
                     List<CraftBlockState> placedBlocks = new ArrayList<>(populator.getSnapshotBlocks());
-                    placedBlocks.addAll(serverLevel.capturedBlockStates.values());
+                    placedBlocks.addAll(capturedBlockStates(serverLevel));
                     return placedBlocks;
                 }
             } finally {
@@ -693,7 +707,7 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
                     return null;
                 }
                 List<CraftBlockState> placedBlocks = new ArrayList<>(populator.getSnapshotBlocks());
-                placedBlocks.addAll(serverLevel.capturedBlockStates.values());
+                placedBlocks.addAll(capturedBlockStates(serverLevel));
                 return placedBlocks;
             } finally {
                 postCaptureBlockStates(serverLevel);
@@ -897,6 +911,23 @@ public final class PaperweightFaweAdapter extends FaweAdapter<net.minecraft.nbt.
         } catch (IllegalAccessException | InvocationTargetException ignored) {
             return false;
         }
+    }
+
+
+    /**
+     * Get the blocks captured while a feature was placed.
+     *
+     * <p>A regionised server holds these on the region that owns the blocks rather than on the world; see
+     * {@link RegionisedCapture}. Every caller here already runs on that region.</p>
+     *
+     * @param serverLevel the level the feature was placed into
+     * @return the captured block states
+     */
+    @SuppressWarnings("unchecked")
+    private static Collection<CraftBlockState> capturedBlockStates(final ServerLevel serverLevel) {
+        return FaweScheduler.isFolia()
+                ? (Collection<CraftBlockState>) RegionisedCapture.capturedBlockStates(serverLevel)
+                : serverLevel.capturedBlockStates.values();
     }
 
 }
