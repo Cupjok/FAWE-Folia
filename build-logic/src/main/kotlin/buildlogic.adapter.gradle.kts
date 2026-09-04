@@ -10,6 +10,15 @@ plugins {
 
 val requiresReobfJar = project.name.startsWith("adapter-1_")
 
+// The dev bundles for the 1.21 line pin a codebook whose ASM stops at Java 24 class files, and paperweight runs it
+// on this project's toolchain - so on the toolchain the rest of the build wants, remapping them dies reading the
+// JDK's own classes. They target Java 21 anyway, so hand those adapters a JDK that can read what it is given.
+if (requiresReobfJar) {
+    the<JavaPluginExtension>().toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
 paperweight {
     injectPaperRepository = false
     reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.REOBF_PRODUCTION
