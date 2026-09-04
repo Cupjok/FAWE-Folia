@@ -5,6 +5,7 @@ import com.fastasyncworldedit.core.math.IntPair;
 import com.fastasyncworldedit.core.util.TaskManager;
 import com.github.ssquadteam.fawe.scheduler.FaweScheduler;
 import com.github.ssquadteam.fawe.scheduler.RegionSync;
+import com.github.ssquadteam.fawe.scheduler.ServerTicks;
 import com.fastasyncworldedit.core.util.task.RunnableVal;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.internal.block.BlockStateIdAccess;
@@ -64,7 +65,7 @@ public class PaperweightFaweWorldNativeAccess implements WorldNativeAccess<Level
         this.level = level;
         // Use the actual tick as minecraft-defined so we don't try to force blocks into the world when the server's already lagging.
         //  - With the caveat that we don't want to have too many cached changed (1024) so we'd flush those at 1024 anyway.
-        this.lastTick = new AtomicInteger(MinecraftServer.currentTick);
+        this.lastTick = new AtomicInteger(currentTick());
     }
 
     private Level getLevel() {
@@ -100,7 +101,7 @@ public class PaperweightFaweWorldNativeAccess implements WorldNativeAccess<Level
             LevelChunk levelChunk, BlockPos blockPos,
             net.minecraft.world.level.block.state.BlockState blockState
     ) {
-        int currentTick = MinecraftServer.currentTick;
+        int currentTick = currentTick();
         if (Fawe.isMainThread()) {
             return levelChunk.setBlockState(blockPos, blockState,
                     this.sideEffectSet.shouldApply(SideEffect.UPDATE) ? 0 : 512
@@ -327,6 +328,18 @@ public class PaperweightFaweWorldNativeAccess implements WorldNativeAccess<Level
             net.minecraft.world.level.block.state.BlockState blockState
     ) {
 
+    }
+
+    /**
+     * Get the tick counter this class compares against.
+     *
+     * <p>A regionised server has no server-wide tick counter to read, so the wall-clock counter stands in for it
+     * there; see {@link ServerTicks}. Paper keeps reading the counter it always did.</p>
+     *
+     * @return the current tick
+     */
+    private static int currentTick() {
+        return FaweScheduler.isFolia() ? ServerTicks.elapsed() : MinecraftServer.currentTick;
     }
 
 }
