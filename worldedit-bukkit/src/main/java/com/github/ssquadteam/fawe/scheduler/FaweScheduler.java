@@ -20,6 +20,20 @@ import org.bukkit.plugin.Plugin;
 public final class FaweScheduler {
 
     /**
+     * Classes that only exist on a regionised server.
+     *
+     * <p>More than one is checked because this has to hold for Folia's forks - Canvas, Luminol and friends - not just
+     * Folia itself. They inherit the regionised internals but are free to move any single class, so a check that hinges
+     * on one name is one refactor away from silently deciding a regionised server is an ordinary one, which would put
+     * FAWE back to touching the world from the wrong thread.</p>
+     */
+    private static final String[] REGIONISED_MARKERS = {
+            "io.papermc.paper.threadedregions.RegionizedServer",
+            "io.papermc.paper.threadedregions.TickRegions",
+            "io.papermc.paper.threadedregions.RegionizedWorldData"
+    };
+
+    /**
      * Whether this server regionises ticking.
      *
      * <p>
@@ -86,20 +100,6 @@ public final class FaweScheduler {
             scheduler = null;
         }
     }
-
-    /**
-     * Classes that only exist on a regionised server.
-     *
-     * <p>More than one is checked because this has to hold for Folia's forks - Canvas, Luminol and friends - not just
-     * Folia itself. They inherit the regionised internals but are free to move any single class, so a check that hinges
-     * on one name is one refactor away from silently deciding a regionised server is an ordinary one, which would put
-     * FAWE back to touching the world from the wrong thread.</p>
-     */
-    private static final String[] REGIONISED_MARKERS = {
-            "io.papermc.paper.threadedregions.RegionizedServer",
-            "io.papermc.paper.threadedregions.TickRegions",
-            "io.papermc.paper.threadedregions.RegionizedWorldData"
-    };
 
     private static boolean detectFolia() {
         for (String marker : REGIONISED_MARKERS) {
