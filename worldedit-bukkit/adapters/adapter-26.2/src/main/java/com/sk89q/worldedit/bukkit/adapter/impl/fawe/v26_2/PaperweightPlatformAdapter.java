@@ -374,14 +374,22 @@ public final class PaperweightPlatformAdapter extends NMSAdapter {
         if (lockHolder.chunkLock == null) {
             return;
         }
-        //FAWE-Folia start - chunk packets belong to the region owning the chunk
+        //FAWE-Folia start - chunk packets belong to the region owning the chunk. The chunk was fetched above, off
+        // whichever thread called sendChunk, so it may be stale or (on the fast path) a snapshot racing the owning
+        // region's own mutations; re-fetch it once we're actually on that region before building the packet.
         RegionSync.dispatch(nmsWorld.getWorld(), chunkX << 4, 0, chunkZ << 4, MinecraftServer.getServer(), () -> {
             try {
-                ChunkPos pos = levelChunk.getPos();
+                LevelChunk regionChunk = PaperSupport.isPaper()
+                    ? nmsWorld.getChunkSource().getChunkAtIfLoadedImmediately(chunkX, chunkZ)
+                    : levelChunk;
+                if (regionChunk == null) {
+                    return;
+                }
+                ChunkPos pos = regionChunk.getPos();
                 ClientboundLevelChunkWithLightPacket packet;
                 if (PaperSupport.isPaper()) {
                     packet = new ClientboundLevelChunkWithLightPacket(
-                        levelChunk,
+                        regionChunk,
                         nmsWorld.getLightEngine(),
                         null,
                         null,
@@ -390,13 +398,20 @@ public final class PaperweightPlatformAdapter extends NMSAdapter {
                 } else {
                     // deprecated on paper - deprecation suppressed
                     packet = new ClientboundLevelChunkWithLightPacket(
-                        levelChunk,
+                        regionChunk,
                         nmsWorld.getLightEngine(),
                         null,
                         null
                     );
                 }
                 nearbyPlayers(nmsWorld, pos).forEach(p -> p.connection.send(packet));
+            } catch (IllegalStateException e) {
+                LOGGER.warn(
+                    "Skipped sending chunk packet for chunk [{}, {}] due to concurrent section modification",
+                    chunkX,
+                    chunkZ,
+                    e
+                );
             } finally {
                 NMSAdapter.endChunkPacketSend(nmsWorld.getWorld().getName(), pair, lockHolder);
             }
